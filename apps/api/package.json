@@ -8,13 +8,15 @@
   },
   "scripts": {
     "dev": "bun --hot src/index.ts",
+    "db:migrate": "bun src/db/migrate.ts",
     "build": "bunx tsc --noEmit -p tsconfig.json",
     "test": "bun test"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
     "@signal-room/shared": "workspace:*",
-    "hono": "^4.10.6"
+    "hono": "^4.10.6",
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@signal-room/config": "workspace:*"

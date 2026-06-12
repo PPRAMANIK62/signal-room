@@ -4,7 +4,15 @@ export type {
   ServiceStatus,
 } from "./schemas/health.schema";
 export { createHealthCheck } from "./schemas/health.schema";
-export type { Room, RoomStatus } from "./schemas/room.schema";
+export {
+  validateCreateRoomRequest,
+  type CreateRoomRequest,
+  type Room,
+  type RoomMetadataResponse,
+  type RoomStatus,
+  type ValidationIssue,
+  type ValidationResult,
+} from "./schemas/room.schema";
 export type {
   Participant,
   ParticipantRole,

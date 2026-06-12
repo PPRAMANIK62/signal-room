@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { apiApp } from "@signal-room/api/app";
-import { fetchHealth } from "@signal-room/api-client";
+import { fetchHealth, type ApiFetcher } from "@signal-room/api-client";
 import { signalingHealthResponse } from "@signal-room/signaling/server";
 
 describe("workspace health smoke test", () => {
   it("checks API and signaling health through the shared client contract", async () => {
-    const fetcher: typeof fetch = async (input) => {
+    const fetcher: ApiFetcher = async (input) => {
       const url = new URL(input.toString());
 
       if (url.port === "3000") {
