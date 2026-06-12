@@ -54,6 +54,41 @@ Prefer mediasoup when the goal is deeper systems learning and lower-level media 
 - [CONTEXT.md](CONTEXT.md): project glossary and canonical domain language.
 - [docs/adr/](docs/adr/): accepted architectural decisions and trade-offs.
 
+## Local Development
+
+Use the Makefile as the local control surface:
+
+```bash
+make help
+make up
+make logs
+```
+
+Run the test suite:
+
+```bash
+make test
+```
+
+Stop the stack:
+
+```bash
+make restart
+make down
+```
+
+Remove containers and local Docker volumes:
+
+```bash
+make clean
+```
+
+Default service ports:
+
+- API: `http://localhost:3000`
+- Signaling gateway: `http://localhost:3001`
+- Web app: `http://127.0.0.1:5173`
+
 ## Core Product
 
 Users create and join rooms. Participants publish audio/video, share screen, mute/unmute, reconnect after network loss, and see room membership state. Calls can be recorded. Recordings feed asynchronous transcription and meeting-memory extraction.
