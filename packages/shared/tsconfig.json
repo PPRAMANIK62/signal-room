@@ -1,0 +1,4 @@
+{
+  "extends": "@signal-room/config/tsconfig/base.json",
+  "include": ["src", "tests"]
+}
