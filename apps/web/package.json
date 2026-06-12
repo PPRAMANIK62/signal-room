@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "vite",
     "build": "bunx tsc --noEmit -p tsconfig.json && vite build",
     "test": "bun test"
   },
