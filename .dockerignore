@@ -1,0 +1,12 @@
+.git
+.gitignore
+.DS_Store
+node_modules
+dist
+dist-ssr
+coverage
+*.log
+.env
+.env.local
+*.local
+.sisyphus

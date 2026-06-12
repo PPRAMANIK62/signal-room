@@ -1,0 +1,162 @@
+services:
+  api:
+    build:
+      context: .
+    command: ["bun", "run", "--cwd", "apps/api", "dev"]
+    environment:
+      API_PORT: 3000
+      DATABASE_URL: postgres://signal_room:signal_room@postgres:5432/signal_room
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: signal-room
+      MINIO_SECRET_KEY: signal-room-secret
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:3000/health'); if (!r.ok) process.exit(1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  signaling:
+    build:
+      context: .
+    command: ["bun", "run", "--cwd", "apps/signaling", "dev"]
+    environment:
+      SIGNALING_PORT: 3001
+      DATABASE_URL: postgres://signal_room:signal_room@postgres:5432/signal_room
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://127.0.0.1:3001/health'); if (!r.ok) process.exit(1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+    command: ["bun", "run", "--cwd", "apps/web", "dev"]
+    environment:
+      WEB_HOST: 0.0.0.0
+      WEB_PORT: 5173
+      VITE_API_URL: http://localhost:3000
+      VITE_SIGNALING_URL: http://localhost:3001
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+      signaling:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+    command: ["bun", "run", "--cwd", "apps/worker", "dev"]
+    environment:
+      DATABASE_URL: postgres://signal_room:signal_room@postgres:5432/signal_room
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: signal-room
+      MINIO_SECRET_KEY: signal-room-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+    command: ["bun", "test"]
+    environment:
+      API_PORT: 3000
+      SIGNALING_PORT: 3001
+      WEB_PORT: 5173
+      DATABASE_URL: postgres://signal_room:signal_room@postgres:5432/signal_room
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: signal-room
+      MINIO_SECRET_KEY: signal-room-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: signal_room
+      POSTGRES_USER: signal_room
+      POSTGRES_PASSWORD: signal_room
+    ports:
+      - "5432:5432"
+    volumes:
+      - signal-room-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signal_room -d signal_room"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - signal-room-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: signal-room
+      MINIO_ROOT_PASSWORD: signal-room-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - signal-room-minio:/data
+
+volumes:
+  signal-room-postgres:
+  signal-room-redis:
+  signal-room-minio:
