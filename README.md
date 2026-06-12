@@ -64,6 +64,13 @@ make up
 make logs
 ```
 
+`make up` applies pending database migrations before starting the full stack.
+To apply migrations without starting the app services, run:
+
+```bash
+make migrate
+```
+
 Run the test suite:
 
 ```bash

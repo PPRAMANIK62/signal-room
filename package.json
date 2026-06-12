@@ -12,6 +12,7 @@
     "dev:signaling": "bun run --cwd apps/signaling dev",
     "dev:web": "bun run --cwd apps/web dev",
     "dev:worker": "bun run --cwd apps/worker dev",
+    "db:migrate": "bun run --cwd apps/api db:migrate",
     "lint": "oxlint .",
     "format": "oxfmt --write .",
     "format:check": "oxfmt .",

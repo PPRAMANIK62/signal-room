@@ -7,6 +7,7 @@ ENV HUSKY=0
 COPY package.json bun.lock tsconfig.json ./
 COPY apps ./apps
 COPY packages ./packages
+COPY infra ./infra
 COPY tests ./tests
 COPY simulators ./simulators
 COPY load ./load

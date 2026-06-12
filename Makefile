@@ -1,11 +1,12 @@
 COMPOSE := docker compose
 
-.PHONY: help build up down restart ps logs test shell api-shell web-shell signaling-shell worker-shell clean
+.PHONY: help build migrate up down restart ps logs test shell api-shell web-shell signaling-shell worker-shell clean
 
 help:
 	@printf "Signal Room Docker commands:\n"
 	@printf "  make build            Build Docker images\n"
-	@printf "  make up               Build and start the stack\n"
+	@printf "  make migrate          Apply pending database migrations\n"
+	@printf "  make up               Apply migrations, then build and start the stack\n"
 	@printf "  make down             Stop the stack\n"
 	@printf "  make restart          Restart the stack\n"
 	@printf "  make ps               Show container status\n"
@@ -21,7 +22,10 @@ help:
 build:
 	$(COMPOSE) build
 
-up:
+migrate:
+	$(COMPOSE) run --build --rm migrate
+
+up: migrate
 	$(COMPOSE) up --build -d
 
 down:

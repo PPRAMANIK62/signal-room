@@ -1,4 +1,14 @@
 services:
+  migrate:
+    build:
+      context: .
+    command: ["bun", "run", "--cwd", "apps/api", "db:migrate"]
+    environment:
+      DATABASE_URL: postgres://signal_room:signal_room@postgres:5432/signal_room
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
