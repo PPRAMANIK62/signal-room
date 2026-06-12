@@ -1,0 +1,22 @@
+{
+  "name": "@signal-room/api",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./app": "./src/app.ts"
+  },
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "bunx tsc --noEmit -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.6",
+    "@signal-room/shared": "workspace:*",
+    "hono": "^4.10.6"
+  },
+  "devDependencies": {
+    "@signal-room/config": "workspace:*"
+  }
+}
