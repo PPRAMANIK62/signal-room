@@ -68,7 +68,9 @@ The frontend is not a marketing site. It is an operator/developer-facing product
 
 - [DESIGN.md](DESIGN.md): backend-heavy system design.
 - [MONOREPO.md](MONOREPO.md): repository layout, apps, packages, local infrastructure, and frontend starter usage.
-- [VERTICAL_SLICES.md](VERTICAL_SLICES.md): complete implementation breakdown from first runnable slice to advanced failure simulations.
+- [CONTEXT.md](CONTEXT.md): project glossary and canonical domain language.
+- [docs/adr/](docs/adr/): accepted architectural decisions and trade-offs.
+- [GitHub Issues](https://github.com/PPRAMANIK62/atlas-desk/issues): implementation slices from first runnable tracer bullet to load tests and failure simulations.
 
 ## Core Product
 
@@ -84,20 +86,24 @@ The system records activity events, sends notifications through a queue, maintai
 - Create workspaces.
 - Add users to workspaces.
 - Assign basic roles: owner, member, viewer.
+- Use `X-User-Id` as temporary dev identity before real auth exists.
 - Check membership before document actions.
 
 ### Documents
 
 - Create, read, update, delete, and list documents.
 - Store document title and body in PostgreSQL.
+- Limit document bodies to 1 MiB of UTF-8 text.
 - Use cursor pagination for workspace document lists.
 - Use optimistic `version` checks to prevent stale edits.
 - Store immutable document revisions.
+- Soft-delete documents before scheduled retention cleanup.
 
 ### Comments And Mentions
 
 - Add comments to documents.
 - Mention workspace members with `@username`.
+- Treat unknown `@username` text as plain comment text.
 - Generate mention notification events.
 - Paginate comments by creation time.
 
@@ -109,7 +115,8 @@ The system records activity events, sends notifications through a queue, maintai
 
 ### Notifications
 
-- Enqueue notification jobs for mentions, follows, comments, and workspace activity.
+- Record durable outbox events for mentions, follows, comments, and workspace activity.
+- Relay outbox events to Redis Streams for worker processing.
 - Process notifications asynchronously.
 - Use idempotency keys to prevent duplicate sends.
 - Simulate delivery as in-app or email notifications.
@@ -131,6 +138,7 @@ The system records activity events, sends notifications through a queue, maintai
 
 - Build a denormalized document search table.
 - Update the projection asynchronously after document changes.
+- Allow search to lag source-of-truth document changes by up to 10 seconds in normal operation.
 - Support basic title/body search and workspace filters.
 
 ### Trends And Recommendations
@@ -144,7 +152,7 @@ The system records activity events, sends notifications through a queue, maintai
 
 - Add per-user API limits.
 - Add stricter limits for write-heavy endpoints.
-- Decide which endpoints fail open or fail closed.
+- During Redis outages, fail open for reads and ordinary low-cost writes but fail closed for abuse-prone writes.
 
 ### Scheduled Jobs
 
@@ -163,7 +171,7 @@ Build the system in vertical slices. Each milestone should leave the project run
 3. Optimistic document edits and immutable revisions.
 4. Activity event log.
 5. Comments and mentions.
-6. Redis-backed notification queue with idempotent worker.
+6. PostgreSQL outbox plus Redis-backed notification queue with idempotent worker.
 7. MinIO attachments.
 8. Realtime presence with TTLs.
 9. Search projection.
@@ -211,7 +219,6 @@ knowledge-workspace/
   README.md
   DESIGN.md
   MONOREPO.md
-  VERTICAL_SLICES.md
   package.json
   bun.lock
   tsconfig.json

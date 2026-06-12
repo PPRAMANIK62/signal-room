@@ -78,7 +78,7 @@ Owns request validation, auth placeholder handling, route composition, response 
 
 ### Application Services
 
-Own use cases such as creating documents, editing documents, adding comments, enqueueing notifications, recording activity, and uploading attachments.
+Own use cases such as creating documents, editing documents, adding comments, recording outbox events, recording activity, and uploading attachments.
 
 ### PostgreSQL
 
@@ -93,6 +93,7 @@ Stores durable source-of-truth state:
 - Attachments.
 - Activity events.
 - Notification records.
+- Outbox events.
 - Search projection rows.
 - Follow relationships.
 - Job records when database-backed leasing is needed.
@@ -103,8 +104,8 @@ Stores ephemeral and high-throughput state:
 
 - Hot document cache.
 - Membership/permission cache.
-- Notification queue.
-- Search indexing queue.
+- Notification queue transport.
+- Search indexing queue transport.
 - Presence TTLs.
 - Rate limit counters.
 - View counters.
@@ -154,6 +155,7 @@ Source of truth:
   attachments
   activity_events
   notification_records
+  outbox_events
 
 Projections:
   document_search
@@ -165,6 +167,27 @@ Projections:
 ```
 
 Projections can be stale. Source-of-truth writes must be correct.
+
+## Identity And Authorization
+
+Protected endpoints use `X-User-Id` as a temporary dev identity until real authentication exists.
+
+Rules:
+
+- `GET /health` is public.
+- Missing, malformed, or unknown `X-User-Id` returns `401 Unauthorized`.
+- Existing users without required workspace membership return `403 Forbidden`.
+- The frontend dev user switcher may switch between seeded users only.
+
+Workspace roles:
+
+```text
+owner   manage workspace membership and roles; all member capabilities
+member  create/edit/delete documents, comment, mention, upload, follow, search, view activity, see presence
+viewer  read documents, search, view activity, see presence, follow documents
+```
+
+Viewers cannot create, edit, delete, comment, mention, or upload.
 
 ## Initial Data Model
 
@@ -221,6 +244,8 @@ CREATE INDEX documents_workspace_updated_idx
   WHERE deleted_at IS NULL;
 ```
 
+Document bodies stay in PostgreSQL with a 1 MiB UTF-8 body limit. Larger content should be uploaded as attachments or exports instead of stored as document body text.
+
 ### document_revisions
 
 ```sql
@@ -272,6 +297,8 @@ CREATE INDEX activity_workspace_created_idx
   ON activity_events (workspace_id, created_at DESC, id DESC);
 ```
 
+Activity events are for human-meaningful collaboration history only. Operational events such as search indexing, notification retries, attachment processing retries, cache invalidation, rate-limit hits, and presence heartbeats belong in logs, metrics, or dev/admin diagnostics.
+
 ### notification_records
 
 ```sql
@@ -288,6 +315,24 @@ CREATE TABLE notification_records (
 );
 ```
 
+### outbox_events
+
+```sql
+CREATE TABLE outbox_events (
+  id UUID PRIMARY KEY,
+  workspace_id UUID REFERENCES workspaces(id),
+  event_type TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  payload JSONB NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  published_at TIMESTAMPTZ
+);
+
+CREATE INDEX outbox_events_status_created_idx
+  ON outbox_events (status, created_at, id);
+```
+
 ### attachments
 
 ```sql
@@ -301,6 +346,18 @@ CREATE TABLE attachments (
   byte_size BIGINT NOT NULL,
   status TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### document_follows
+
+```sql
+CREATE TABLE document_follows (
+  document_id UUID NOT NULL REFERENCES documents(id),
+  user_id UUID NOT NULL REFERENCES users(id),
+  workspace_id UUID NOT NULL REFERENCES workspaces(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (document_id, user_id)
 );
 ```
 
@@ -354,6 +411,8 @@ POST /workspaces/:workspaceId/documents/:documentId/comments
 GET  /workspaces/:workspaceId/documents/:documentId/comments?limit=50&cursor=...
 ```
 
+Mention parsing only creates mention side effects for existing workspace members. Unknown `@username` text remains plain comment text and does not create a notification.
+
 ### Activity
 
 ```text
@@ -365,6 +424,13 @@ GET /workspaces/:workspaceId/activity?limit=50&cursor=...
 ```text
 GET   /notifications?limit=50&cursor=...
 PATCH /notifications/:notificationId/read
+```
+
+### Follows
+
+```text
+POST   /workspaces/:workspaceId/documents/:documentId/follow
+DELETE /workspaces/:workspaceId/documents/:documentId/follow
 ```
 
 ### Attachments
@@ -405,9 +471,24 @@ If no row is returned, the service checks whether the document exists. Existing 
 
 The successful update also inserts a `document_revisions` row and an `activity_events` row in the same database transaction.
 
+## Delete Design
+
+Documents and comments are soft-deleted with `deleted_at`.
+
+Rules:
+
+- Soft-deleted documents disappear from normal lists and search.
+- Soft-deleted comments disappear from normal comment threads.
+- Revisions, activity history, notification links, attachment metadata, and outbox history remain for audit and repair.
+- Attachments belonging to deleted documents are not immediately removed from MinIO.
+- Scheduled cleanup may hard-delete eligible soft-deleted records after a retention window.
+- Owners and members can delete documents they can edit; viewers cannot delete.
+
 ## Queue Design
 
-Use Redis Streams for asynchronous jobs.
+Use a PostgreSQL outbox before Redis Streams.
+
+Source-of-truth transactions that need asynchronous side effects insert durable `outbox_events` rows in the same transaction as the domain write. A relay publishes pending outbox events to Redis Streams. Workers consume Redis Streams and perform idempotent effects.
 
 Suggested streams:
 
@@ -450,6 +531,8 @@ Rules:
 - Presence state is naturally ephemeral.
 - Rate limit counters expire by window.
 
+During Redis outages, rate limiting fails open for reads and ordinary low-cost writes, but fails closed for abuse-prone writes such as comments, mentions, and attachment uploads.
+
 ## Object Storage Design
 
 Attachments are stored in MinIO with versioned keys:
@@ -484,14 +567,21 @@ Only state transitions should produce pub/sub events.
 ## Invariants
 
 - A user can only access a workspace they belong to.
+- Protected endpoints require a valid dev identity until real authentication exists.
+- Missing, malformed, or unknown dev identity returns `401 Unauthorized`.
+- Existing users without required workspace membership return `403 Forbidden`.
+- Only owners can manage workspace membership and roles.
+- Viewers cannot create, edit, delete, comment, mention, or upload.
 - A document belongs to exactly one workspace.
 - A comment belongs to the same workspace as its document.
 - A document version only increases.
 - A document revision is immutable.
+- Documents and comments are soft-deleted before scheduled hard cleanup.
 - Notification sends are idempotent.
 - Object metadata in PostgreSQL is the source of truth for attachments.
-- Search results may be stale.
-- Activity events are append-only.
+- Search results may be stale for up to 10 seconds in normal operation.
+- Activity events are append-only and human-meaningful; internal events stay out of the normal activity feed.
+- Durable side effects are recoverable from PostgreSQL outbox events.
 
 ## Failure Modes
 
@@ -501,14 +591,14 @@ Source-of-truth reads and writes fail. Return `503 Service Unavailable` for affe
 
 ### Redis Unavailable
 
-Cache, queues, rate limits, counters, and presence degrade. Decide per feature:
+Cache, queue transport, rate limits, counters, and presence degrade. Durable side effects remain recoverable from PostgreSQL outbox events.
 
 ```text
 document cache    bypass and read Postgres
 membership cache  bypass and read Postgres
-notifications     fail write or store fallback outbox in Postgres
+outbox relay      pause publishing; resume when Redis recovers
 presence          unavailable
-rate limits       fail open for reads, fail closed for abusive writes
+rate limits       fail open for reads and low-cost writes, fail closed for abuse-prone writes
 ```
 
 ### MinIO Unavailable
@@ -521,7 +611,7 @@ Workers may process the same job more than once. Use idempotency keys and unique
 
 ### Stale Search
 
-Document updates may not appear in search immediately. The document read API remains correct because PostgreSQL is the source of truth.
+Document updates may not appear in search for up to 10 seconds in normal operation. The document read API remains correct because PostgreSQL is the source of truth.
 
 ### Hot Document
 
@@ -567,6 +657,9 @@ Track:
 - Append activity event after document change.
 - Create notification record once for duplicate jobs.
 - Store attachment metadata after upload.
+- Create outbox events in the same transaction as source-of-truth writes.
+- Relay outbox events to Redis Streams without duplicate visible effects.
+- Hide soft-deleted documents and comments from normal product surfaces.
 
 ### Load Tests
 
@@ -610,10 +703,11 @@ Use k6 for:
 
 - Comments.
 - Mention parsing.
-- Notification job enqueue.
+- Outbox event creation for notifications.
 
 ### Milestone 6: Notifications
 
+- PostgreSQL outbox relay.
 - Redis Stream queue.
 - Idempotent worker.
 - Notification records.
@@ -657,8 +751,4 @@ Use k6 for:
 
 ## Open Design Questions
 
-- Should notification enqueue happen through Redis Streams directly or through a PostgreSQL outbox first?
-- Should document body stay in PostgreSQL forever, or should large bodies move to MinIO later?
-- What is the acceptable staleness window for search?
-- Should rate limiting fail open or fail closed during Redis outages?
-- Which activity events should be user-visible versus internal-only?
+No unresolved design questions are currently recorded.

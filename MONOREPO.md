@@ -42,7 +42,6 @@ knowledge-workspace/
   README.md
   DESIGN.md
   MONOREPO.md
-  VERTICAL_SLICES.md
 
   package.json
   bun.lock
