@@ -2,15 +2,24 @@ import {
   AlertTriangle,
   CheckCircle2,
   CircleDashed,
+  Clock3,
+  DoorOpen,
+  Loader2,
   RadioTower,
   RefreshCw,
+  Sparkles,
   Server,
   ShieldCheck,
+  Video,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { fetchHealth } from "@signal-room/api-client";
-import type { HealthCheck, ServiceStatus } from "@signal-room/shared";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  ApiValidationError,
+  createRoom,
+  fetchHealth,
+} from "@signal-room/api-client";
+import type { HealthCheck, Room, ServiceStatus } from "@signal-room/shared";
 import { getWebEnv } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
@@ -24,9 +33,33 @@ type HealthState = {
 
 const env = getWebEnv();
 
+type CreateRoomState =
+  | {
+      status: "empty";
+    }
+  | {
+      status: "submitting";
+    }
+  | {
+      status: "success";
+      room: Room;
+    }
+  | {
+      status: "validation-error";
+      message: string;
+    }
+  | {
+      status: "api-error";
+      message: string;
+    };
+
 export function App() {
   const [healthState, setHealthState] = useState<HealthState>({
     status: "loading",
+  });
+  const [roomTitle, setRoomTitle] = useState("");
+  const [createRoomState, setCreateRoomState] = useState<CreateRoomState>({
+    status: "empty",
   });
 
   async function checkHealth() {
@@ -91,30 +124,76 @@ export function App() {
   );
 
   const overallStatus = getOverallStatus(healthState);
+  const trimmedRoomTitle = roomTitle.trim();
+  const canSubmit =
+    trimmedRoomTitle.length > 0 && createRoomState.status !== "submitting";
+
+  async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!trimmedRoomTitle) {
+      setCreateRoomState({
+        status: "validation-error",
+        message: "Room title is required.",
+      });
+      return;
+    }
+
+    setCreateRoomState({ status: "submitting" });
+
+    try {
+      const response = await createRoom({
+        apiUrl: env.apiUrl,
+        request: {
+          title: trimmedRoomTitle,
+        },
+      });
+
+      setCreateRoomState({
+        status: "success",
+        room: response.room,
+      });
+    } catch (error) {
+      if (error instanceof ApiValidationError) {
+        setCreateRoomState({
+          status: "validation-error",
+          message: error.message,
+        });
+        return;
+      }
+
+      setCreateRoomState({
+        status: "api-error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Room could not be created. Try again shortly.",
+      });
+    }
+  }
 
   return (
     <main className="min-h-dvh bg-zinc-950 text-zinc-100">
       <div className="mx-auto flex min-h-dvh w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-4 border-b border-zinc-800 pb-5 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-sm font-medium text-cyan-100">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-sm font-medium text-teal-100">
               <ShieldCheck className="size-4" aria-hidden="true" />
               Local room systems
             </div>
             <h1 className="text-balance text-3xl font-semibold text-white sm:text-5xl">
-              Signal Room control plane readiness
+              Create a durable room from the lobby
             </h1>
             <p className="mt-3 max-w-2xl text-pretty text-base leading-7 text-zinc-300">
-              A first operational surface for verifying that the API and
-              signaling gateway are reachable before room, media, and meeting
-              memory slices land.
+              Name a room, send it through the HTTP API, and see the
+              PostgreSQL-backed room metadata return to the product surface.
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => void checkHealth()}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-zinc-100 shadow-sm outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-zinc-100 shadow-sm outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-teal-300 disabled:cursor-not-allowed disabled:opacity-60"
             aria-label="Refresh service health"
             disabled={healthState.status === "loading"}
           >
@@ -123,8 +202,71 @@ export function App() {
           </button>
         </header>
 
-        <section className="grid flex-1 gap-5 py-5 lg:grid-cols-[1fr_360px]">
+        <section className="grid flex-1 gap-5 py-5 lg:grid-cols-[minmax(0,1fr)_390px]">
           <div className="grid content-start gap-5">
+            <section className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-5 shadow-lg shadow-black/20">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <form onSubmit={handleCreateRoom} className="grid gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-teal-100">
+                      <DoorOpen className="size-4" aria-hidden="true" />
+                      Lobby entry
+                    </div>
+                    <h2 className="mt-2 text-balance text-2xl font-semibold text-white">
+                      Start with a room title
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-pretty text-sm leading-6 text-zinc-400">
+                      This is the first durable room-state path across shared
+                      schemas, typed client code, the HTTP API, and Postgres.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor="room-title"
+                      className="text-sm font-medium text-zinc-200"
+                    >
+                      Room title
+                    </label>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <input
+                        id="room-title"
+                        value={roomTitle}
+                        onChange={(event) => {
+                          setRoomTitle(event.target.value);
+                          if (
+                            createRoomState.status === "validation-error" ||
+                            createRoomState.status === "api-error"
+                          ) {
+                            setCreateRoomState({ status: "empty" });
+                          }
+                        }}
+                        placeholder="Weekly signal review"
+                        className="h-11 min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-teal-300 focus:ring-2 focus:ring-teal-300/30"
+                        maxLength={80}
+                        aria-describedby="room-title-state"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!canSubmit}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-teal-300 px-4 text-sm font-semibold text-zinc-950 shadow-sm outline-none hover:bg-teal-200 focus-visible:ring-2 focus-visible:ring-teal-100 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
+                      >
+                        {createRoomState.status === "submitting" ? (
+                          <Loader2 className="size-4" aria-hidden="true" />
+                        ) : (
+                          <Video className="size-4" aria-hidden="true" />
+                        )}
+                        Create room
+                      </button>
+                    </div>
+                    <RoomCreateFeedback state={createRoomState} />
+                  </div>
+                </form>
+
+                <RoomMetadataPanel state={createRoomState} />
+              </div>
+            </section>
+
             <StatusBanner
               status={overallStatus}
               checkedAt={healthState.checkedAt}
@@ -163,7 +305,7 @@ export function App() {
                       {label}
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-zinc-800">
-                      <div className="h-2 w-1/3 rounded-full bg-cyan-300" />
+                      <div className="h-2 w-1/3 rounded-full bg-teal-300" />
                     </div>
                   </div>
                 ))}
@@ -205,11 +347,115 @@ export function App() {
                       : "failed"
                 }
               />
+              <TimelineItem
+                label="Room creation"
+                detail={getRoomTimelineDetail(createRoomState)}
+                tone={
+                  createRoomState.status === "success"
+                    ? "ready"
+                    : createRoomState.status === "submitting"
+                      ? "checking"
+                      : createRoomState.status === "api-error" ||
+                          createRoomState.status === "validation-error"
+                        ? "failed"
+                        : "checking"
+                }
+              />
             </ol>
           </aside>
         </section>
       </div>
     </main>
+  );
+}
+
+function RoomCreateFeedback({ state }: { state: CreateRoomState }) {
+  const message =
+    state.status === "validation-error" || state.status === "api-error"
+      ? state.message
+      : state.status === "submitting"
+        ? "Creating room through the HTTP API."
+        : state.status === "success"
+          ? "Room created and returned by the API."
+          : "Enter a title to create the first durable room.";
+
+  return (
+    <p
+      id="room-title-state"
+      className={cn(
+        "min-h-6 text-pretty text-sm leading-6",
+        state.status === "validation-error" || state.status === "api-error"
+          ? "text-amber-200"
+          : state.status === "success"
+            ? "text-emerald-200"
+            : "text-zinc-500",
+      )}
+      aria-live="polite"
+    >
+      {message}
+    </p>
+  );
+}
+
+function RoomMetadataPanel({ state }: { state: CreateRoomState }) {
+  if (state.status === "success") {
+    return (
+      <aside className="rounded-md border border-emerald-400/30 bg-emerald-400/10 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-emerald-100">
+          <CheckCircle2 className="size-4" aria-hidden="true" />
+          Created room
+        </div>
+        <dl className="mt-4 grid gap-3 text-sm">
+          <MetadataRow label="Title" value={state.room.title} />
+          <MetadataRow label="Room ID" value={state.room.id} />
+          <MetadataRow label="Status" value={state.room.status} />
+          <MetadataRow
+            label="Created"
+            value={new Date(state.room.createdAt).toLocaleString()}
+          />
+        </dl>
+      </aside>
+    );
+  }
+
+  if (state.status === "submitting") {
+    return (
+      <aside className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-zinc-100">
+          <Clock3 className="size-4" aria-hidden="true" />
+          Creating room
+        </div>
+        <div className="mt-4 grid gap-3">
+          <div className="h-10 rounded-md bg-zinc-900" />
+          <div className="h-10 rounded-md bg-zinc-900" />
+          <div className="h-10 rounded-md bg-zinc-900" />
+        </div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="rounded-md border border-zinc-800 bg-zinc-950 p-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-zinc-100">
+        <Sparkles className="size-4 text-teal-200" aria-hidden="true" />
+        No room created yet
+      </div>
+      <p className="mt-3 text-pretty text-sm leading-6 text-zinc-400">
+        Created room metadata will appear here with the room ID, status, and
+        creation time after the API responds.
+      </p>
+    </aside>
+  );
+}
+
+function MetadataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded-md border border-emerald-400/20 bg-zinc-950/70 p-3">
+      <dt className="text-xs text-emerald-100/70">{label}</dt>
+      <dd className="truncate text-sm font-medium tabular-nums text-white">
+        {value}
+      </dd>
+    </div>
   );
 }
 
@@ -396,4 +642,20 @@ function getOverallStatus(
   }
 
   return "failed";
+}
+
+function getRoomTimelineDetail(state: CreateRoomState) {
+  if (state.status === "success") {
+    return `Created ${state.room.title}`;
+  }
+
+  if (state.status === "submitting") {
+    return "Waiting for API response";
+  }
+
+  if (state.status === "validation-error" || state.status === "api-error") {
+    return state.message;
+  }
+
+  return "No room has been created yet";
 }
