@@ -1,6 +1,6 @@
-# Atlas Call Context
+# Signal Room Context
 
-Atlas Call is a realtime video calling domain. This glossary defines the project language used across product docs, ADRs, issues, tests, and implementation.
+Signal Room is a realtime video calling domain. This glossary defines the project language used across product docs, ADRs, issues, tests, and implementation.
 
 ## Language
 
@@ -46,6 +46,10 @@ _Avoid_: Dump, sync blob
 
 ### Media Plane
 
+**WebRTC**:
+Browser APIs and protocols for realtime audio, video, and data communication.
+_Avoid_: Video library
+
 **Media plane**:
 The path that carries audio, video, and screen-share packets.
 _Avoid_: Realtime layer
@@ -71,6 +75,18 @@ Service used by clients to discover network address information for NAT traversa
 
 **TURN**:
 Relay service used when direct media connectivity is not possible.
+
+**SDP**:
+Session description exchanged during offer/answer negotiation, including media capabilities, codecs, and connection details.
+_Avoid_: Config blob
+
+**ICE candidate**:
+A possible network path discovered during WebRTC connection setup.
+_Avoid_: Network option
+
+**Simulcast**:
+Publishing multiple quality layers of the same video so an SFU can forward the right layer for each receiver.
+_Avoid_: Video copy
 
 ### Quality And Reliability
 
@@ -107,6 +123,32 @@ _Avoid_: AI summary
 **Debug incident**:
 A persisted diagnostic record for call setup, reconnect, media quality, SFU, TURN, recording, or worker failures.
 _Avoid_: Error log
+
+### Frontend Product Language
+
+**Lobby**:
+The pre-call surface where a user checks devices, permissions, identity, room context, and join readiness.
+_Avoid_: Join form
+
+**Call room**:
+The primary in-call surface for media, participants, local controls, quality state, and reconnect feedback.
+_Avoid_: Video page
+
+**Debug inspector**:
+The frontend operational surface for room events, signaling, ICE, SFU state, quality samples, reconnect attempts, and failure reasons.
+_Avoid_: Admin dump
+
+**Meeting memory surface**:
+The post-call frontend surface for recordings, transcripts, decisions, action items, and searchable timeline entries.
+_Avoid_: Transcript page
+
+**Designed state**:
+A deliberate UI treatment for loading, empty, ready, degraded, reconnecting, failed, recovered, offline, or permission-blocked states.
+_Avoid_: Placeholder
+
+**Frontend craft**:
+The product-quality standard for interaction design, visual hierarchy, motion, accessibility, and edge-case handling.
+_Avoid_: Polish pass
 
 ### Operations
 

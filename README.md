@@ -1,18 +1,26 @@
-# Atlas Call
+# Signal Room
 
-Atlas Call is a realtime video calling system design project.
+Signal Room is a full-stack realtime video calling system design project.
 
-It is intentionally not another CRUD/productivity app. The purpose is to learn the backend and distributed-systems parts of video calls: WebRTC signaling, room state, SFU routing, TURN fallback, reconnects, recording, transcription, meeting memory, and operational debugging.
+It is intentionally not another CRUD/productivity app. The purpose is to learn the systems and product parts of video calls end to end: WebRTC signaling, room state, SFU routing, TURN fallback, reconnects, recording, transcription, meeting memory, operational debugging, and the frontend surfaces that make those behaviors usable, observable, and beautiful.
 
 ## Product Angle
 
-Atlas Call should be better than ordinary meeting apps in one focused way: it makes call quality and meeting memory first-class.
+Signal Room should be better than ordinary meeting apps in one focused way: it makes call quality and meeting memory first-class.
 
 The project has three differentiators:
 
 - Network-aware calls with visible quality diagnostics.
 - Meeting memory from recordings, transcripts, decisions, action items, and searchable timeline entries.
 - Developer/admin debug mode for signaling, ICE, media, reconnects, SFU state, and failure reasons.
+
+## Frontend Standard
+
+The frontend is not a thin verification shell. It should feel like it was built by a frontend engineer who cares about product taste, interaction details, and visual clarity.
+
+Signal Room should be clean, interactive, and systems-aware: a polished call experience where quality state, reconnect behavior, room membership, media controls, and meeting memory are visible without feeling like an internal admin tool. The UI should have the craft bar of an Emil Kowalski-style design engineering project: crisp defaults, thoughtful motion, precise spacing, responsive controls, and invisible edge-case handling.
+
+Frontend work is part of the core product scope. A feature is not really done until the user-facing or operational UI state makes the underlying system behavior understandable.
 
 ## Default Stack
 
@@ -21,6 +29,8 @@ Language:        TypeScript
 Runtime:         Bun
 Package manager: Bun
 API framework:   Hono
+Frontend:        React + Vite
+Styling:         Tailwind CSS + shadcn/ui
 Database:        PostgreSQL
 Cache/queue:     Redis
 Object storage:  MinIO
@@ -30,15 +40,17 @@ NAT traversal:   STUN/TURN
 Testing:         bun test
 Load testing:    k6 plus call simulators
 Containers:      Docker / Docker Compose
-Design docs:     DESIGN.md
+Design docs:     docs/DESIGN.md
 ```
 
-Prefer mediasoup when the goal is deeper backend learning and lower-level control. Prefer LiveKit if the goal is to ship a more production-shaped app faster.
+Prefer mediasoup when the goal is deeper systems learning and lower-level media control. Prefer LiveKit if the goal is to ship a more production-shaped app faster.
 
 ## Project Docs
 
-- [DESIGN.md](DESIGN.md): backend-heavy system design for the realtime video system.
-- [MONOREPO.md](MONOREPO.md): repository layout, apps, packages, local infrastructure, and frontend starter usage.
+- [docs/DESIGN.md](docs/DESIGN.md): full-stack system design for the realtime video product.
+- [docs/LEARNING.md](docs/LEARNING.md): beginner map for calls, WebRTC, signaling, SFU, NAT traversal, quality, and what to learn first.
+- [docs/MONOREPO.md](docs/MONOREPO.md): repository layout, apps, packages, frontend, local infrastructure, and testing strategy.
+- [docs/FRONTEND.md](docs/FRONTEND.md): frontend product, interaction, motion, and craft standards.
 - [CONTEXT.md](CONTEXT.md): project glossary and canonical domain language.
 - [docs/adr/](docs/adr/): accepted architectural decisions and trade-offs.
 
@@ -93,20 +105,3 @@ The system includes an admin/debug surface that explains what happened during a 
 - Signaling event inspection.
 - ICE and reconnect visibility.
 - SFU node and media session state.
-
-## First Build Target
-
-Start with the realtime spine only:
-
-```text
-rooms
-participants
-WebSocket signaling
-1:1 WebRTC call
-room events
-participant state
-reconnect with state snapshot
-basic debug log
-```
-
-Do not start with recording, transcription, or meeting memory. Those become valuable only after the call lifecycle is solid.

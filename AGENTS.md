@@ -1,4 +1,4 @@
-# atlas-call
+# signal-room
 
 ## Agent skills
 

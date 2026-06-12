@@ -1,10 +1,10 @@
-# Atlas Call Design
+# Signal Room Design
 
 ## Problem
 
-Atlas Call is a realtime video calling system for teams that need reliable calls, meeting memory, and deep operational visibility.
+Signal Room is a realtime video calling system for teams that need reliable calls, meeting memory, and deep operational visibility.
 
-The project is not a Google Meet clone. It is a backend-heavy system design project focused on the parts that make realtime media difficult: signaling, room state, media routing, reconnects, NAT traversal, recording, transcription, observability, and failure recovery.
+The project is not a Google Meet clone. It is a full-stack system design project with a systems-heavy focus and a serious frontend craft bar: signaling, room state, media routing, reconnects, NAT traversal, recording, transcription, observability, failure recovery, and the product UI needed to operate and understand those flows.
 
 ## Product Angle
 
@@ -16,15 +16,18 @@ The system should be better than ordinary meeting apps in three focused ways:
 
 ## Design Goal
 
-Build a realistic realtime communication backend without trying to build a full commercial conferencing company.
+Build a realistic full-stack realtime communication system without trying to build a full commercial conferencing company.
 
-Use proven media infrastructure for the media plane. Own the application control plane, signaling, persistence, jobs, observability, and failure behavior.
+Use proven media infrastructure for the media plane. Own the application control plane, signaling, persistence, jobs, observability, frontend workflows, and failure behavior.
+
+The frontend should be treated as a first-class design engineering problem. It should not feel like a backend demo with forms attached. The interaction model, visual hierarchy, motion, and empty/loading/error states should make complex realtime behavior feel calm, legible, and responsive.
 
 ## Requirements
 
 ### Functional Requirements
 
 - Users can create and join meeting rooms.
+- Users can move through a coherent lobby, call room, and post-call meeting-memory experience.
 - Participants can publish audio and video.
 - Participants can mute, unmute, enable camera, disable camera, and share screen.
 - Participants can see room membership and participant state.
@@ -38,6 +41,8 @@ Use proven media infrastructure for the media plane. Own the application control
 - Transcripts are generated asynchronously.
 - Meeting memory stores transcript, decisions, action items, and searchable timeline entries.
 - Admin/debug view can inspect room state, participant quality, signaling events, and failure reasons.
+- Frontend states make call setup, reconnects, quality changes, recording, transcription, and meeting-memory progress visible.
+- Frontend interactions provide polished feedback for frequent actions such as mute, camera, screen share, room join, reconnect, recording, and debug inspection.
 
 ### Non-Functional Requirements
 
@@ -49,6 +54,9 @@ Use proven media infrastructure for the media plane. Own the application control
 - Recording and transcription must run asynchronously.
 - System behavior must be measurable under load.
 - Local development must run through Docker Compose.
+- User-facing interactions must feel responsive under normal local development conditions.
+- Motion must clarify state changes without slowing frequent call controls.
+- UI states must cover loading, empty, degraded, reconnecting, failed, and recovered paths.
 
 ## Non-Goals
 
@@ -58,7 +66,7 @@ Use proven media infrastructure for the media plane. Own the application control
 - Calendar integration.
 - External OAuth.
 - Billing.
-- Mobile apps.
+- Native mobile apps.
 - Perfect AI summaries.
 - Multi-region deployment in the first version.
 
@@ -93,7 +101,42 @@ Object Storage
   +--> debug bundles
 ```
 
+## Frontend Experience Model
+
+The frontend has four primary surfaces:
+
+1. Lobby: preflight camera/mic checks, device selection, participant identity, room metadata, and join readiness.
+2. Call room: media grid, local controls, participant state, screen sharing, connection quality, and reconnect feedback.
+3. Debug view: signaling timeline, ICE state, SFU/media session state, quality samples, room events, and failure reasons.
+4. Meeting memory: recording status, transcript progress, decisions, action items, timeline entries, and searchable artifacts.
+
+The UI should expose systems behavior through product-grade interactions. Reconnect should feel like a recoverable state, not a crash. Quality degradation should be visible without being noisy. Debug details should be inspectable without dominating the normal call experience.
+
+Frontend design principles:
+
+- Product first: build screens that people can actually use, not only developer fixtures.
+- Systems visible: surface realtime state, failures, and recovery in understandable language.
+- Calm density: keep operational detail scannable without turning every screen into a table.
+- Fast feedback: frequent controls should respond immediately and avoid ornamental delay.
+- Intentional motion: use short, purposeful transitions for state changes, popovers, drawers, toasts, and call-status changes.
+- Accessibility by default: keyboard flow, focus states, contrast, reduced motion, and readable status updates are part of the design.
+- Visual taste matters: typography, spacing, color, iconography, and component rhythm should feel designed, not assembled.
+
 ## Core Components
+
+### Web App
+
+Owns the user-facing product experience:
+
+- lobby and device preflight
+- call room and media controls
+- participant grid and active-speaker state
+- reconnect and degraded-network feedback
+- call quality indicators
+- debug inspector and event timeline
+- recording, transcript, and meeting-memory surfaces
+- empty/loading/error/recovered UI states
+- interaction polish and accessibility
 
 ### HTTP API
 
@@ -147,7 +190,7 @@ Owns media routing:
 - participant producer/consumer management
 - media stats collection
 
-Use a real SFU such as mediasoup or LiveKit. Prefer mediasoup if the goal is deeper backend learning and lower-level control.
+Use a real SFU such as mediasoup or LiveKit. Prefer mediasoup if the goal is deeper systems learning and lower-level media control.
 
 ### TURN / STUN
 

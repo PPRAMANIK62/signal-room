@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Atlas Call needs HTTP APIs, WebSocket signaling, room state, workers, storage, and diagnostics. Splitting these into many services immediately would add deployment and coordination work before the domain is understood.
+Signal Room needs HTTP APIs, WebSocket signaling, room state, workers, storage, and diagnostics. Splitting these into many services immediately would add deployment and coordination work before the domain is understood.
 
 ## Decision
 

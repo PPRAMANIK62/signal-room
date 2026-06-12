@@ -11,4 +11,4 @@ ADRs record accepted decisions that are hard to reverse, surprising without cont
 - [0005: Use Redis For Ephemeral Realtime State](0005-use-redis-for-ephemeral-realtime-state.md)
 - [0006: Store Large Media Artifacts In Object Storage](0006-store-large-media-artifacts-in-object-storage.md)
 
-Open questions live in `DESIGN.md` until accepted. Once accepted, move the decision into an ADR and update the design docs.
+Open questions live in `docs/DESIGN.md` until accepted. Once accepted, move the decision into an ADR and update the design docs.

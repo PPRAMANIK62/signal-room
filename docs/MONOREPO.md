@@ -1,8 +1,8 @@
-# Atlas Call Monorepo
+# Signal Room Monorepo
 
-This project should be built as a monorepo with one backend API, one signaling gateway, background workers, a frontend verification app, shared packages, local infrastructure, tests, and load scripts.
+This project should be built as a monorepo with one backend API, one signaling gateway, background workers, a first-class frontend app, shared packages, local infrastructure, tests, and load scripts.
 
-The frontend exists so realtime backend behavior can be verified through real call workflows instead of only through curl or tests.
+The project is full stack. Its center of gravity is systems work, but the frontend is an integral part of the product: it drives real call workflows, exposes room and media state, makes correctness visible beyond curl or tests, and sets a high craft bar for interaction design.
 
 ## Stack
 
@@ -16,7 +16,7 @@ Database:        PostgreSQL
 Cache/queue:     Redis
 Object storage:  MinIO
 Realtime:        WebSocket signaling
-Media:           mediasoup or LiveKit SFU
+Media:           mediasoup SFU
 NAT traversal:   STUN/TURN
 Testing:         bun test
 Load testing:    k6 plus call simulators
@@ -31,20 +31,29 @@ Runtime:         Bun
 Framework:       React
 Styling:         Tailwind CSS
 UI components:   shadcn/ui
+Icons:           lucide-react
 Data fetching:   TanStack Query
 Forms:           React Hook Form + Zod
 Realtime:        WebSocket client
 Media:           WebRTC browser APIs
+Animation:       CSS transitions first; Motion only where it adds real value
 Starter repo:    https://github.com/PPRAMANIK62/vite-starter-template
 ```
 
 ## Root Layout
 
 ```text
-atlas-call/
+signal-room/
   README.md
-  DESIGN.md
-  MONOREPO.md
+  CONTEXT.md
+
+  docs/
+    DESIGN.md
+    FRONTEND.md
+    LEARNING.md
+    MONOREPO.md
+    adr/
+    agents/
 
   package.json
   bun.lock
@@ -157,7 +166,7 @@ Owns:
 
 ### apps/web
 
-The Vite frontend.
+The Vite frontend product surface and verification app.
 
 Start from:
 
@@ -176,10 +185,13 @@ apps/web/
       layout/
     components/
       ui/
+      primitives/
+      layout/
       call/
       debug/
       quality/
       meeting-memory/
+      motion/
     features/
       auth-dev/
       rooms/
@@ -197,12 +209,14 @@ apps/web/
       env.ts
     styles/
       globals.css
+      tokens.css
   public/
 ```
 
 Owns:
 
 - room lobby.
+- device preflight and permission states.
 - call room.
 - local camera/mic controls.
 - participant grid.
@@ -211,7 +225,11 @@ Owns:
 - quality indicators.
 - debug inspector.
 - recording/transcript/meeting-memory surfaces.
+- empty, loading, error, degraded, recovered, and offline UI states.
+- interaction polish, motion rules, focus states, and responsive layout.
 - end-to-end verification flows.
+
+The frontend should feel deliberately designed. Avoid generic dashboard energy, default starter-page composition, and UI that exists only to exercise APIs. Every major system feature should have a clear user-facing state and a polished operational/debug state.
 
 ### apps/worker
 
@@ -351,12 +369,41 @@ Each vertical slice should include:
 Backend route, signaling behavior, or worker behavior
 Database, Redis, SFU, TURN, or MinIO change
 Frontend screen or UI state
+Interaction, loading, empty, error, and recovered states
 Shared schema/type updates when needed
 Tests
 One observable metric or manual verification step
 ```
 
-Do not build backend-only slices unless the feature has no user-facing or operational surface.
+Prefer vertical slices that connect the system behavior to a user-facing or operational frontend surface whenever the feature can be observed meaningfully.
+
+## Frontend Product Philosophy
+
+The frontend should be clean, interactive, and product-grade. Signal Room can be systems-heavy without looking like a systems-only project.
+
+Design expectations:
+
+- The lobby should make joining feel intentional: devices, permissions, identity, room context, and readiness are obvious.
+- The call room should prioritize media, people, and immediate controls before diagnostics.
+- Quality and reconnect state should be visible, but calm.
+- Debug mode should be powerful and scannable, with timelines, filters, and structured event detail.
+- Meeting memory should feel like a useful artifact, not a raw transcript dump.
+- Frequent controls should feel instant; rare flows can carry more expressive transitions.
+- Empty/loading/error states should be designed states, not leftover text.
+- Responsive layouts should work on laptop and mobile web sizes.
+- Accessibility is part of polish: focus rings, keyboard flow, labels, contrast, and reduced-motion behavior matter.
+
+Motion expectations:
+
+- Use transitions for transform, opacity, color, and filter. Avoid `transition: all`.
+- Keep frequent UI feedback under 160ms where possible.
+- Keep popovers, menus, and small overlays around 150-250ms.
+- Use purposeful easing, usually ease-out or a custom ease-out curve for entering UI.
+- Never animate keyboard-initiated actions in ways that make the app feel delayed.
+- Gate hover-only effects behind pointer/hover media queries.
+- Respect `prefers-reduced-motion`.
+- Add subtle press feedback to real controls.
+- Make popovers and menus feel anchored to their trigger.
 
 ## Frontend Verification Philosophy
 
@@ -371,4 +418,4 @@ The frontend should make realtime correctness visible:
 - transcript and meeting-memory jobs should show retryable failure state;
 - slow-client and gateway backpressure behavior should be testable.
 
-The UI is a test harness with dignity: useful enough to operate the system, but not overloaded with product polish before the realtime concepts are working.
+The UI is a real product surface and a verification tool: polished enough to use the system seriously, but not overloaded with decorative product work before the realtime concepts are working.
