@@ -17,8 +17,8 @@ Single-context repo:
 /
 |-- CONTEXT.md
 |-- docs/adr/
-|   |-- 0001-event-sourced-orders.md
-|   `-- 0002-postgres-for-write-model.md
+|   |-- 0001-start-with-a-modular-control-plane.md
+|   `-- 0002-use-a-real-sfu.md
 `-- src/
 ```
 

@@ -1,4 +1,4 @@
-# atlas-desk
+# atlas-call
 
 ## Agent skills
 

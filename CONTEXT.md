@@ -1,131 +1,123 @@
-# Atlas Desk Context
+# Atlas Call Context
 
-Atlas Desk is a collaborative knowledge workspace domain. This glossary defines the project language used across product docs, ADRs, issues, tests, and implementation.
+Atlas Call is a realtime video calling domain. This glossary defines the project language used across product docs, ADRs, issues, tests, and implementation.
 
 ## Language
 
-### Workspace And Identity
-
-**Workspace**:
-A collaboration boundary that contains members, documents, activity, and discovery surfaces.
-_Avoid_: Tenant, organization
+### Identity And Rooms
 
 **User**:
-A person who can be identified by the system and participate in one or more workspaces.
+A person who can create or join rooms.
 _Avoid_: Account, actor
 
-**Membership**:
-The relationship between a user and a workspace, including the user's role in that workspace.
-_Avoid_: Access row, permission entry
+**Room**:
+A meeting space that contains participants, media sessions, room events, recordings, and meeting memory.
+_Avoid_: Call, conference
 
-**Owner**:
-A workspace member who can manage workspace membership and roles and can perform all member actions.
-_Avoid_: Admin
+**Participant**:
+A user inside a room, including role, join/leave state, device state, and live session state.
+_Avoid_: Member, attendee
 
-**Member**:
-A workspace participant who can create, edit, delete, comment on, mention from, upload to, follow, search, and view documents and workspace activity.
-_Avoid_: Editor
+**Join token**:
+A short-lived credential that allows a user to join a room through the signaling gateway.
+_Avoid_: Room password, invite key
 
-**Viewer**:
-A read-only workspace participant who can read documents, search, view activity, see presence, and follow documents, but cannot write collaboration content or manage members.
-_Avoid_: Reader, guest
+### Realtime Control Plane
 
-**Dev identity**:
-A temporary authenticated user identity supplied by the `X-User-Id` request header before real authentication exists.
-_Avoid_: Mock auth, fake auth
+**Signaling gateway**:
+The WebSocket service that coordinates WebRTC setup, room events, participant state, and reconnect recovery.
+_Avoid_: Socket server
 
-### Documents And Collaboration
+**Signaling message**:
+A control-plane message such as join, offer, answer, ICE candidate, publish track, subscribe track, or participant state change.
+_Avoid_: WebRTC message
 
-**Document**:
-An editable workspace knowledge item with title, body, version, author, soft-delete state, and revisions.
-_Avoid_: Page, note
+**Room event**:
+A durable, sequenced event for important room changes.
+_Avoid_: Log line
 
-**Document body**:
-The textual content of a document, stored in PostgreSQL with a product-defined size limit.
-_Avoid_: Blob, object body
+**Room sequence**:
+A monotonically increasing per-room number used for replay and reconnect recovery.
+_Avoid_: Global sequence
 
-**Document revision**:
-An immutable history entry created by a successful document edit.
-_Avoid_: Snapshot, version row
+**State snapshot**:
+The current room state sent to a reconnecting client when event replay is insufficient or unnecessary.
+_Avoid_: Dump, sync blob
 
-**Expected version**:
-The document version supplied by a client when attempting an optimistic edit.
-_Avoid_: ETag, revision token
+### Media Plane
 
-**Comment**:
-A document-scoped discussion item created by a workspace member.
-_Avoid_: Reply, message
+**Media plane**:
+The path that carries audio, video, and screen-share packets.
+_Avoid_: Realtime layer
 
-**Mention**:
-An `@username` reference to a workspace member from collaboration content.
-_Avoid_: Tag
+**Control plane**:
+The path that carries room state, permissions, signaling, jobs, and diagnostics.
+_Avoid_: Backend
 
-**Follow**:
-A user's explicit subscription to future activity for a document.
-_Avoid_: Watch, subscribe
+**SFU**:
+Selective Forwarding Unit. The media server that receives participant streams and forwards selected streams to other participants.
+_Avoid_: Video server
 
-**Attachment**:
-Workspace-scoped file metadata in PostgreSQL plus object bytes in MinIO.
-_Avoid_: Upload record, blob
+**Producer**:
+A participant media track published to the SFU.
+_Avoid_: Stream source
 
-**Soft delete**:
-A deletion state that hides content from normal product surfaces while retaining source-of-truth records for retention, history, and cleanup.
-_Avoid_: Archive, trash
+**Consumer**:
+A participant subscription to a producer track.
+_Avoid_: Stream listener
 
-**Retention window**:
-The period after soft deletion during which data is retained before scheduled hard cleanup may remove it.
+**STUN**:
+Service used by clients to discover network address information for NAT traversal.
+
+**TURN**:
+Relay service used when direct media connectivity is not possible.
+
+### Quality And Reliability
+
+**Quality sample**:
+A point-in-time measurement of media or connection health, such as RTT, jitter, packet loss, bitrate, codec, or ICE state.
+_Avoid_: Metric event
+
+**Reconnect window**:
+The short period during which a participant can reconnect and recover room state without being treated as a fresh join.
 _Avoid_: Grace period
 
-### Activity And Notifications
+**Slow client**:
+A connected client that cannot consume signaling events quickly enough.
+_Avoid_: Bad client
 
-**Activity event**:
-An append-only workspace event that represents human-meaningful collaboration history.
-_Avoid_: Log line, audit row
+**Backpressure**:
+The gateway behavior that prevents one slow client from consuming unbounded memory.
+_Avoid_: Throttling
 
-**Internal event**:
-An operational event used for logs, metrics, retries, projections, diagnostics, or worker coordination rather than the normal workspace activity feed.
-_Avoid_: Activity event
+### Recording And Meeting Memory
 
-**Notification record**:
-A durable, user-visible notification created idempotently from queued work.
-_Avoid_: Alert, message
+**Recording**:
+A durable media artifact produced from a room.
+_Avoid_: Video file
 
-**Outbox event**:
-A durable PostgreSQL row that records a side effect to be published after the source-of-truth transaction commits.
-_Avoid_: Queue job, stream message
+**Transcript**:
+Text generated from room audio, usually tied to a recording and time ranges.
+_Avoid_: Captions
 
-**Idempotency key**:
-A stable key that makes retries and duplicate jobs safe at the visible effect boundary.
-_Avoid_: Dedup key
+**Meeting memory**:
+Derived, searchable artifacts from a room: transcript snippets, decisions, action items, and timeline entries.
+_Avoid_: AI summary
 
-### Presence, Search, And Discovery
-
-**Presence**:
-Per-user, per-device workspace availability state with online, recently active, and offline transitions.
-_Avoid_: Status
-
-**Search projection**:
-A denormalized document search view updated asynchronously from source-of-truth document changes.
-_Avoid_: Search index, read model
-
-**Search staleness window**:
-The normal maximum delay before a committed document change appears in search results.
-_Avoid_: Eventual delay
-
-**Trending document**:
-A document ranked from recent view or activity counters.
-_Avoid_: Hot document
-
-**Recommended document**:
-A document suggested from recent activity, popularity, and membership context.
-_Avoid_: Suggested page
+**Debug incident**:
+A persisted diagnostic record for call setup, reconnect, media quality, SFU, TURN, recording, or worker failures.
+_Avoid_: Error log
 
 ### Operations
-
-**Abuse-prone write**:
-A write operation that can create high fan-out, high cost, or spam pressure when repeated.
-_Avoid_: Dangerous write
 
 **Vertical slice**:
 A user-visible capability delivered across frontend, backend, persistence, tests, and measurement.
 _Avoid_: Layer, milestone
+
+**Durable state**:
+State that must survive process restarts and can rebuild other views.
+_Avoid_: Permanent state
+
+**Ephemeral state**:
+State that can expire or be rebuilt through reconnect, heartbeat, or republish flows.
+_Avoid_: Temporary cache
