@@ -1,0 +1,16 @@
+{
+  "name": "@signal-room/worker",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "build": "bunx tsc --noEmit -p tsconfig.json",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@signal-room/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@signal-room/config": "workspace:*"
+  }
+}
