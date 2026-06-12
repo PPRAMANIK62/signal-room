@@ -1,0 +1,9 @@
+{
+  "name": "@signal-room/config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig/base": "./tsconfig/base.json",
+    "./tsconfig/base.json": "./tsconfig/base.json"
+  }
+}

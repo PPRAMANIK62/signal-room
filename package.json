@@ -1,0 +1,54 @@
+{
+  "name": "signal-room",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:signaling": "bun run --cwd apps/signaling dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "dev:worker": "bun run --cwd apps/worker dev",
+    "lint": "oxlint .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt .",
+    "build": "bun run --filter '*' build",
+    "test": "bun test",
+    "precommit": "lint-staged",
+    "prepare": "husky",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "load": "k6 run load/smoke.js",
+    "simulate:calls": "bun run simulators/calls.ts"
+  },
+  "devDependencies": {
+    "@signal-room/api": "workspace:*",
+    "@signal-room/api-client": "workspace:*",
+    "@signal-room/config": "workspace:*",
+    "@signal-room/shared": "workspace:*",
+    "@signal-room/signaling": "workspace:*",
+    "@types/bun": "^1.3.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2",
+    "oxfmt": "^0.36.0",
+    "oxlint": "^1.51.0",
+    "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "oxlint",
+      "oxfmt --write --no-error-on-unmatched-pattern"
+    ],
+    "*.{js,jsx}": [
+      "oxlint",
+      "oxfmt --write --no-error-on-unmatched-pattern"
+    ],
+    "*.{json,jsonc,css,md,yml,yaml}": [
+      "oxfmt --write --no-error-on-unmatched-pattern"
+    ]
+  }
+}
